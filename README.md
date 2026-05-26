@@ -1,8 +1,8 @@
-# End-to-end Fashion Recommendation and Virtual Try-On System
+# Fashion Recommendation System
 
 # Introduction
 
-This project is an end-to-end Fashion Recommendation and Virtual Try-On System built using deep learning and vision-language models. It supports multiple types of queries—text, image, and gallery-based selection—and recommends visually and semantically similar clothing items. It also allows users to try one various clothes on different models virtually.
+This project is a Fashion Recommendation System built using deep learning and vision-language models. It supports multiple types of queries—text, image, and gallery-based selection—and recommends visually and semantically similar clothing items.
 
 # Project Structure
 
@@ -48,7 +48,6 @@ The project implements various ML/DL models to recommend clothes based on images
 - Image-based Recommendation: custom ResNet50 (with custom Encoder-Decoder)
 - Text-based Recommendation: BLIP (for image caption generation), CLIP (Fine Tuned - for quick text-to-image retrieval)
 - User Interface: Streamlit
-- Vrtual Try-On: CP-VTON
 
 # UI Demo and Saved Models
 
