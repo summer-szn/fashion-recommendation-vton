@@ -43,7 +43,7 @@ fashion_recommender/
 
 # Models Used
 
-The project implements various ML/DL models to recommend clothes based on images and text queries, as well as to try-on clothes virtually:
+The project implements various ML/DL models to recommend clothes based on images and text queries:
 
 - Image-based Recommendation: custom ResNet50 (with custom Encoder-Decoder)
 - Text-based Recommendation: BLIP (for image caption generation), CLIP (Fine Tuned - for quick text-to-image retrieval)
