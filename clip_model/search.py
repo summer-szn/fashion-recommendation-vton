@@ -1,50 +1,44 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 import json
 import torch
 import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
-from transformers import CLIPProcessor, CLIPModel
+import time
+import faiss
+from transformers import CLIPTokenizerFast, CLIPModel
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model = CLIPModel.from_pretrained("clip_model/clip-finetuned").to(device)
-processor = CLIPProcessor.from_pretrained("clip_model/clip-finetuned")
+assert device == "cuda", "cuda not detected"
 
-image_embeddings = np.load("clip_model/image_embeddings.npy")
+model = CLIPModel.from_pretrained("clip_model/clip-finetuned", torch_dtype=torch.float16).to(device)
+processor = CLIPTokenizerFast.from_pretrained("clip_model/clip-finetuned", use_fast=True)
+
+image_embeddings = np.load("clip_model/image_embeddings.npy").astype('float32')
 with open("clip_model/image_filenames.json", "r") as f:
     image_filenames = json.load(f)
 
-query = "beach top"
-inputs = processor(text=[query], return_tensors="pt", padding=True).to(device)
+dimension = image_embeddings.shape[1]
+index = faiss.IndexFlatIP(dimension) 
+index.add(image_embeddings) 
 
-with torch.no_grad():
-    text_features = model.get_text_features(**inputs)
-    text_features /= text_features.norm(p=2, dim=-1, keepdim=True)
-
-image_embeddings_tensor = torch.tensor(image_embeddings)
-similarities = torch.nn.functional.cosine_similarity(
-    text_features.cpu(), image_embeddings_tensor
-)
-
-top_k = 5
-top_indices = similarities.topk(top_k).indices
-
-for idx in top_indices:
-    print(f"Match: {image_filenames[idx]} (Score: {similarities[idx].item():.4f})")
-
-image_dir = "data/train/cloth"
-plt.figure(figsize=(15, 5))
-for i, idx in enumerate(top_indices):
-    fname = image_filenames[idx]
-    score = similarities[idx].item()
-    img_path = os.path.join(image_dir, fname)
-    image = Image.open(img_path).convert("RGB")
-
-    plt.subplot(1, top_k, i + 1)
-    plt.imshow(image)
-    plt.title(f"{fname}\nScore: {score:.2f}")
-    plt.axis("off")
-
-plt.suptitle(f"Top-{top_k} Matches for: '{query}'", fontsize=16)
-plt.tight_layout()
-plt.show()
+def execute_ultra_fast_search(query_text, top_k=10):
+    inputs = processor([query_text], return_tensors="pt", padding=True).to(device)
+    
+    with torch.no_grad():
+        _ = model.get_text_features(**inputs)
+    
+    start_time = time.perf_counter()    
+    with torch.no_grad():
+        text_features = model.get_text_features(**inputs)
+        text_features = text_features.cpu().numpy().astype('float32')
+        faiss.normalize_L2(text_features)
+    scores, indices = index.search(text_features, top_k)
+    
+    end_time = time.perf_counter()
+    latency_ms = (end_time - start_time) * 1000
+    
+    print(f"\nLatency: {latency_ms:.4f} ms")
+    for i, idx in enumerate(indices[0]):
+        print(f"Rank {i+1}: {image_filenames[idx]} | Confidence Score: {scores[0][i]:.4f}")
